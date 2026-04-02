@@ -1,0 +1,5 @@
+{
+  "name": "GlowGuide AI",
+  "description": "Personalized AI makeup recommendations based on your unique features and skin tone.",
+  "requestFramePermissions": ["camera"]
+}
