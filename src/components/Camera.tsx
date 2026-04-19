@@ -32,7 +32,7 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onCancel }) => {
       if (errorStr.includes('dismissed')) {
         setError("Camera permission was dismissed. Please click 'Try Again' and choose 'Allow' when prompted.");
       } else if (errorStr.includes('denied') || err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setError("Camera access is blocked. Please click the camera icon in your browser's address bar, select 'Always allow', and try again.");
+        setError("Camera access is blocked. If you are viewing this inside an embedded window, you MUST click 'Open in New Tab' below to grant camera permissions, or use the 'Upload Photo' button instead.");
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
         setError("No camera found on this device.");
       } else {
