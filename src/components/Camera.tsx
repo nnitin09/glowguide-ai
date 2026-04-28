@@ -66,7 +66,7 @@ export const Camera: React.FC<CameraProps> = ({ onCapture, onCancel }) => {
         canvasRef.current.width = videoRef.current.videoWidth;
         canvasRef.current.height = videoRef.current.videoHeight;
         context.drawImage(videoRef.current, 0, 0);
-        const dataUrl = canvasRef.current.toDataURL('image/jpeg');
+        const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.6);
         setCapturedImage(dataUrl);
         stopCamera();
       }

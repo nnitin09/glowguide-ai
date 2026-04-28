@@ -18,6 +18,40 @@ export interface MakeupRecommendation {
   explanation: string;
 }
 
+export interface ChatMessage {
+  role: "user" | "model";
+  text: string;
+}
+
+export async function chatWithBeautyBot(history: ChatMessage[], newMessage: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY || "";
+  if (!apiKey) {
+    throw new Error("Gemini API key is missing.");
+  }
+  
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const contents = [...history.map(msg => ({
+    role: msg.role === 'model' ? 'model' : 'user',
+    parts: [{ text: msg.text }]
+  })), { role: 'user', parts: [{ text: newMessage }] }];
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents,
+      config: {
+        systemInstruction: "You are GlowGuide AI, a friendly beauty, makeup, and skincare expert. Your goal is to provide helpful, easy-to-understand, and personalized beauty advice. Explain things simply using everyday English so that anyone can understand, avoiding complex jargon or overly scientific terms. When a user asks about a concern or look, suggest simple product types, easy-to-find ingredients, and clear, step-by-step instructions. Ask the user simple questions about their skin type or what they like. Format your responses beautifully using markdown, with clear headings, bullet points, and bold text so it's easy to read. Respond ONLY to queries related to beauty, makeup, skincare, and styling. Politely decline any off-topic requests.",
+      }
+    });
+
+    return response.text || "I'm sorry, I couldn't provide a response.";
+  } catch (error: any) {
+    console.error("Gemini API Error in chat:", error);
+    throw new Error(error.message || "An unexpected error occurred during chat.");
+  }
+}
+
 export async function analyzeFace(imageBase64: string): Promise<MakeupRecommendation> {
   // Instantiate inside the function to ensure we use the latest API key
   const apiKey = process.env.GEMINI_API_KEY || "";
@@ -41,7 +75,7 @@ export async function analyzeFace(imageBase64: string): Promise<MakeupRecommenda
   - Blush shades (provide a specific hex color code)
   - An overall makeup style suggestion (e.g., "Natural Glow", "Bold Glam", "Classic Professional")
   
-  Return the result in a structured JSON format. Be descriptive in the explanation field, using markdown for formatting.`;
+  Return the result in a structured JSON format. Be descriptive in the explanation field, but use simple, easy-to-understand language so that normal people can understand it without needing to know complex beauty words. Use markdown for formatting.`;
 
   try {
     const response = await ai.models.generateContent({

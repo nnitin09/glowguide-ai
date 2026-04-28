@@ -15,11 +15,6 @@
 }
 
 body {
-  background-color: #fdf5f7;
-  background-image: 
-    radial-gradient(circle at top right, #fce4ec 0%, transparent 60%),
-    radial-gradient(circle at bottom left, #fadce6 0%, transparent 50%);
-  background-attachment: fixed;
   color: var(--color-brand-ink);
   font-family: var(--font-sans);
   min-height: 100vh;
