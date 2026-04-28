@@ -52,7 +52,13 @@ export async function chatWithBeautyBot(history: ChatMessage[], newMessage: stri
   }
 }
 
-export async function analyzeFace(imageBase64: string): Promise<MakeupRecommendation> {
+function cleanJsonResponse(text: string): string {
+  // Remove markdown codeblock wrapping if it exists
+  const match = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  return match ? match[1] : text;
+}
+
+export async function analyzeFace(imageBase64: string, retries = 2): Promise<MakeupRecommendation> {
   // Instantiate inside the function to ensure we use the latest API key
   const apiKey = process.env.GEMINI_API_KEY || "";
   if (!apiKey) {
@@ -77,59 +83,75 @@ export async function analyzeFace(imageBase64: string): Promise<MakeupRecommenda
   
   Return the result in a structured JSON format. Be descriptive in the explanation field, but use simple, easy-to-understand language so that normal people can understand it without needing to know complex beauty words. Use markdown for formatting.`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: {
-        parts: [
-          { text: prompt },
-          {
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: imageBase64.split(",")[1],
-            },
-          },
-        ],
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            skinTone: { type: Type.STRING },
-            undertone: { type: Type.STRING },
-            faceShape: { type: Type.STRING },
-            skinType: { type: Type.STRING },
-            recommendations: {
-              type: Type.OBJECT,
-              properties: {
-                foundation: { type: Type.STRING },
-                lipstick: { type: Type.STRING },
-                lipstickHex: { type: Type.STRING, description: "Hex color code for lipstick" },
-                eyeshadow: { type: Type.STRING },
-                eyeshadowHex: { type: Type.STRING, description: "Hex color code for eyeshadow" },
-                blush: { type: Type.STRING },
-                blushHex: { type: Type.STRING, description: "Hex color code for blush" },
-                overallStyle: { type: Type.STRING },
+  let lastError: any;
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: {
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: imageBase64.split(",")[1],
               },
-              required: ["foundation", "lipstick", "lipstickHex", "eyeshadow", "eyeshadowHex", "blush", "blushHex", "overallStyle"],
             },
-            explanation: { type: Type.STRING },
-          },
-          required: ["skinTone", "undertone", "faceShape", "skinType", "recommendations", "explanation"],
+          ],
         },
-      },
-    });
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              skinTone: { type: Type.STRING },
+              undertone: { type: Type.STRING },
+              faceShape: { type: Type.STRING },
+              skinType: { type: Type.STRING },
+              recommendations: {
+                type: Type.OBJECT,
+                properties: {
+                  foundation: { type: Type.STRING },
+                  lipstick: { type: Type.STRING },
+                  lipstickHex: { type: Type.STRING, description: "Hex color code for lipstick" },
+                  eyeshadow: { type: Type.STRING },
+                  eyeshadowHex: { type: Type.STRING, description: "Hex color code for eyeshadow" },
+                  blush: { type: Type.STRING },
+                  blushHex: { type: Type.STRING, description: "Hex color code for blush" },
+                  overallStyle: { type: Type.STRING },
+                },
+                required: ["foundation", "lipstick", "lipstickHex", "eyeshadow", "eyeshadowHex", "blush", "blushHex", "overallStyle"],
+              },
+              explanation: { type: Type.STRING },
+            },
+            required: ["skinTone", "undertone", "faceShape", "skinType", "recommendations", "explanation"],
+          },
+        },
+      });
 
-    const text = response.text;
-    if (!text) throw new Error("The AI returned an empty response.");
-    
-    return JSON.parse(text) as MakeupRecommendation;
-  } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    if (error.message?.includes("API key")) {
-      throw new Error("Invalid or missing API key. Please ensure it is set correctly.");
+      const text = response.text;
+      if (!text) throw new Error("The AI returned an empty response.");
+      
+      const cleanedText = cleanJsonResponse(text);
+      return JSON.parse(cleanedText) as MakeupRecommendation;
+    } catch (error: any) {
+      console.error(`Gemini API Error (attempt ${attempt + 1}):`, error);
+      lastError = error;
+      
+      // If it's a quota or API key error, don't retry, fail immediately
+      if (error.message?.includes("API key") || error.status === 403 || error.status === 401) {
+        throw new Error("Invalid or missing API key. Please ensure it is set correctly.");
+      }
+      
+      // If not the last attempt, wait before retrying (exponential backoff)
+      if (attempt < retries) {
+        const delay = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
     }
-    throw new Error(error.message || "An unexpected error occurred during analysis.");
   }
+
+  // If we exhausted all retries
+  throw new Error(lastError?.message || "Analysis failed after multiple attempts. Please try again later.");
 }
