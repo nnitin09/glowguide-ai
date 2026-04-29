@@ -2,7 +2,6 @@
 
 Your AI-powered personal beauty guide. GlowGuide AI leverages advanced vision models to analyze your facial features, skin tone, and undertones purely from a photograph to provide hyper-personalized makeup and beauty recommendations.
 
-![GlowGuide AI Preview](https://via.placeholder.com/800x400?text=GlowGuide+AI)
 
 ## ✨ What Makes It Unique
 
@@ -72,6 +71,3 @@ You will need a [Google Gemini API Key](https://aistudio.google.com/app/apikey) 
 
 Your images are processed efficiently and safely. Large images are automatically compressed directly in the browser using HTML5 Canvas before ever being sent to the AI service. This ensures faster analysis times and reduces bandwidth usage.
 
-## 📄 License
-
-MIT License - feel free to use this project for your own beauty and tech endeavors!
